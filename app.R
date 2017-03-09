@@ -49,6 +49,7 @@ ui<-fluidPage(
                  sidebarPanel(
                    selectInput(inputId="uniVarSelect",label="Variable to analyse:",choices=character(0)),
                    hr(),
+                   radioButtons(inputId="uniTestRadio","Statistical test:",choices="temp"),
                    textInput(inputId="uniPlotVMin",label="Plot-Y min:",value=1),
                    textInput(inputId="uniPlotVMax",label="Plot-Y max:",value=50)
                  ),
@@ -189,6 +190,12 @@ server<-function(input,output,session) {
   
   observe({
     updateSelectInput(session,"uniVarSelect",choices=varList())
+    
+    if(groupUnique()>2) {
+      updateRadioButtons(session,"uniTestRadio",choices=c("ANOVA + Tukey HSD"="anova", "T-Test"="ttest","Mann-Whitney U"="mwu"))
+    }else {
+      updateRadioButtons(session,"uniTestRadio",choices=c("T-Test"="ttest","Mann-Whitney U"="mwu"))
+    }
   })
 }
 
@@ -245,11 +252,4 @@ mwuStats<-function(X,Y) {
   }
   return(pVal)
 }
-
-
-
-
-
-# A panel of colors to draw each group with the same color :
-my_colors=c( rgb(143,199,74,maxColorValue = 255),rgb(242,104,34,maxColorValue = 255), rgb(111,145,202,maxColorValue = 255),rgb(254,188,18,maxColorValue = 255) , rgb(74,132,54,maxColorValue = 255),rgb(236,33,39,maxColorValue = 255),rgb(165,103,40,maxColorValue = 255))
 
