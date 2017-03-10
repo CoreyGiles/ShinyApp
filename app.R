@@ -31,20 +31,13 @@ ui<-fluidPage(
                )
              )),
              tabPanel("Preprocessing",mainPanel(
-               p(code("test this out")),
-               textInput(inputId = "textIn","Enter some Text here:", value=""),
-               p(code("test this out")),
-               textOutput(outputId = "b")
+               p(code("This area is under development.")),
+               uiOutput("preProcess")
              )),
              tabPanel("Exploration",mainPanel(
                verbatimTextOutput(outputId = "summaryTable")
              )),
              tabPanel("Univariate",verticalLayout(
-               uiOutput("univariateMeans")                                   ####################
-             )),
-             tabPanel("Univariate2",verticalLayout(
-               #selectInput(inputId="uniVarSelect",label="Variable to analyse:",choices=character(0))
-               #uiOutput("univariate")                                   ####################
                verticalLayout(sidebarLayout(
                  sidebarPanel(
                    selectInput(inputId="uniVarSelect",label="Variable to analyse:",choices=character(0)),
@@ -54,8 +47,37 @@ ui<-fluidPage(
                    textInput(inputId="uniPlotVMax",label="Plot-Y max:",value=50)
                  ),
                  mainPanel(
-                   #uiOutput(paste0("univariateMain",i))
-                 )),hr())
+                   splitLayout(
+                     tagList(
+                       verbatimTextOutput("uniStatSummary")
+                     ),
+                     tagList(
+                       plotOutput(outputId = "uniVarPlot")
+                       )
+                   )
+                 )),hr(),
+                 sidebarLayout(
+                   sidebarPanel(
+                     selectInput(inputId="corVarSelectX",label="X-axis Variable:",choices=character(0)),
+                     selectInput(inputId="corVarSelectY",label="Y-axis variable:",choices=character(0)),
+                     hr(),
+                     radioButtons(inputId="corTestRadio","Statistical test:",choices="temp"),
+                     textInput(inputId="corPlotXMin",label="Plot-X min:",value=1),
+                     textInput(inputId="corPlotXMax",label="Plot-X max:",value=50),
+                     textInput(inputId="corPlotYMin",label="Plot-Y min:",value=1),
+                     textInput(inputId="corPlotYMax",label="Plot-Y max:",value=50)
+                   ),
+                   mainPanel(
+                     splitLayout(
+                       tagList(
+                         verbatimTextOutput("corStatSummary")
+                       ),
+                       tagList(
+                         plotOutput(outputId = "corVarPlot")
+                       )
+                     )
+                   ))
+                 )
              )),
              tabPanel("Multivariate",mainPanel(
                p(code("test this out"))
@@ -108,98 +130,162 @@ server<-function(input,output,session) {
   output$dataTable<-renderDataTable(dataInput(),options=list(pageLength=10))
 
   
-  #############################################  Exploration  ###########
-  
-  output$summaryTable<-renderPrint(summary(dataInput()))
-  
-  
-  #############################################  Univariate Statistics  ###########
-  output$univariateMeans<-renderUI({
-    verticalLayout(
-      lapply(1:varLength(), function(i) {tagList(sidebarLayout(
-        sidebarPanel(
-          textOutput(outputId=paste0("univariateLabel",i)),
-          hr(),
-          if(groupUnique()>2) {
-            radioButtons(inputId=paste0("univariateRadio",i),"Statistical test:",c("ANOVA + Tukey HSD"="anova", "T-Test"="ttest","Mann-Whitney U"="mwu"))
-          }else {
-            radioButtons(inputId=paste0("univariateRadio",i),"Statistical test:",c("T-Test"="ttest","Mann-Whitney U"="mwu"))
-          },
-          textInput(inputId=paste0("uniTextMin",i),label="Plot-Y min:",value=min(dataInput()[,which(colnames(dataInput())==varList()[i])])),
-          textInput(inputId=paste0("uniTextMax",i),label="Plot-Y max:",value=max(dataInput()[,which(colnames(dataInput())==varList()[i])]))
-          ),
-        mainPanel(
-          uiOutput(paste0("univariateMain",i))
-        )),hr())
-        }
-    ))
+  #############################################  Preprocess  ###########
+  output$preProcess<-renderUI({
+    lapply(1:varLength(),function(i) {
+      fluidRow(
+        column(width=4,tagList(
+        h1(varList()[i])
+      )),
+      column(width=4,tagList(
+        checkboxInput(paste0("ignore",i),label="Ignore")
+      )),
+      column(width=4,tagList(
+        selectInput(paste0("transform",i),label="Transform",choices=c("None"="none","Logarithm"="log","Square root"="sqrt"))
+      )))
+    })
   })
-  
-  univariateStats<-observe(lapply(1:varLength(),function(i) {
-    variable<-which(colnames(dataInput())==varList()[i])
-    stats<-numeric(groupUnique()*(groupUnique()+1)/2-groupUnique())
-    sigLabels<-stats
-    if(!is.null(dataInput())) {
-      output[[paste0("univariateMain",i)]]<-renderUI({splitLayout({
-        if(input[[paste0("univariateRadio",i)]]=="ttest") {
-          stats<<-tTestStats(dataInput()[,variable],groupList())
-          sigLabels<<-statLabels(stats)
+
+  temp2<-reactive({
+    ae<<-c()
+    if(varLength()!=0) {
+      lapply(1:varLength(),function(i) {
+        eval(parse(text=paste0("temp<-input$ignore",i)))
+        if(!is.null(temp) && temp) {
+          ae<<-append(ae,which(colnames(dataInput())==varList()[i]))
         }
-        if(input[[paste0("univariateRadio",i)]]=="anova") {
-          model=lm(dataInput()[,variable]~groupList())
-          ANOVA=aov(model)
-          stats<<-TukeyHSD(x=ANOVA, conf.level=0.95)[[1]][,4]
-          sigLabels<<-statLabels(stats)
-        }
-        p(input[[paste0("univariateRadio",i)]])},
-        plotOutput(outputId = paste0("tempHackPlot",i))
-      )})
-      output[[paste0("tempHackPlot",i)]]<-renderPlot({
-        #hist(dataInput()[,which(colnames(dataInput())==varList()[i])],main=varList()[i],xlab=varList()[i])
-        #bPlot<-boxplot(dataInput()[,variable]~groupList(),ylim=c(min(dataInput()[,variable]),1.1*max(dataInput()[,variable])),col=c("red","green","blue"))
-        bPlot<-boxplot(dataInput()[,variable]~groupList(),ylim=c(as.numeric(eval(parse(text=paste0("input$uniTextMin",i)))),1.1*as.numeric(eval(parse(text=paste0("input$uniTextMax",i))))),col=c("red","green","blue"))
-        over=0.1*max(bPlot$stats[nrow(bPlot$stats),])
-        text( c(1:groupUnique()) , bPlot$stats[nrow(bPlot$stats),]+over,as.character(sigLabels) )
-      })
-      output[[paste0("univariateLabel",i)]]<-renderText({
-        paste(varList()[[i]],eval(parse(text=paste0("input$uniTextMin",i))))
       })
     }
-  }))
-
-#############################################  Univariate Statistics  ###########
-  output$univariate<-renderUI({
-    verticalLayout(sidebarLayout(
-        sidebarPanel(
-          i<-1,
-          selectInput(inputId="uniVarSelect",label="Variable to analyse:",choices=varList()),
-          p(paste0(input$uniVarSelect)),
-          hr(),
-          if(groupUnique()>2) {
-            radioButtons(inputId=paste0("univariateRadio",i),"Statistical test:",c("ANOVA + Tukey HSD"="anova", "T-Test"="ttest","Mann-Whitney U"="mwu"))
-          }else {
-            radioButtons(inputId=paste0("univariateRadio",i),"Statistical test:",c("T-Test"="ttest","Mann-Whitney U"="mwu"))
-          },
-          textInput(inputId=paste0("uniTextMin",i),label="Plot-Y min:",value=min(dataInput()[,which(colnames(dataInput())==varList()[i])])),
-          textInput(inputId=paste0("uniTextMax",i),label="Plot-Y max:",value=max(dataInput()[,which(colnames(dataInput())==varList()[i])]))
-        ),
-        mainPanel(
-          uiOutput(paste0("univariateMain",i))
-        )),hr())
+    return(ae)
   })
   
+  dataOut<-reactive({
+    if(!is.null(temp2())) {
+      return(dataInput()[,-temp2()])
+    } else {
+      return(dataInput())
+    }
+  })
+  #############################################  Exploration  ###########
+  
+  output$summaryTable<-renderPrint(summary(dataOut()))
+  
+  
+  ####################################################   Univariate Statistics
   observe({
     updateSelectInput(session,"uniVarSelect",choices=varList())
-    
+  })
+
+  observe({
     if(groupUnique()>2) {
       updateRadioButtons(session,"uniTestRadio",choices=c("ANOVA + Tukey HSD"="anova", "T-Test"="ttest","Mann-Whitney U"="mwu"))
     }else {
       updateRadioButtons(session,"uniTestRadio",choices=c("T-Test"="ttest","Mann-Whitney U"="mwu"))
     }
   })
+
+  pVal<-reactive({
+    test<-switch(input$uniTestRadio,
+                 anova=runANOVA,
+                 ttest=tTestStats,
+                 mwu=mwuStats,
+                 ttest)
+    test(dataInput()[,input$uniVarSelect],groupList())
+  })
+
+  ####################################################   Univariate plots
+  observe({
+    updateTextInput(session,"uniPlotVMin",value=min(varYPlotMin()))
+    updateTextInput(session,"uniPlotVMax",value=min(varYPlotMax()))
+  })
+  
+  output$uniStatSummary<-renderPrint({
+    selected<-input$uniVarSelect
+    if(selected=="") {return(NULL)}
+    print(pVal())
+  })
+  
+  varYPlotMin<-reactive({
+    selected<-input$uniVarSelect
+    if(selected=="") {return(0)}
+    return(min(isolate({dataInput()[,input$uniVarSelect]})))
+  })
+  
+  varYPlotMax<-reactive({
+    selected<-input$uniVarSelect
+    if(selected=="") {return(10)}
+    return(max(isolate({dataInput()[,input$uniVarSelect]})))
+  })
+  
+  output$uniVarPlot<-renderPlot({
+    selected<-input$uniVarSelect
+    if(selected=="") {return(NULL)}
+    bPlot<-boxplot(dataInput()[,selected]~groupList(),ylim=c(as.numeric(input$uniPlotVMin),1.1*as.numeric(input$uniPlotVMax)),col=c("red","green","blue"))
+    over=0.1*max(bPlot$stats[nrow(bPlot$stats),])
+    text( c(1:groupUnique()) , bPlot$stats[nrow(bPlot$stats),]+over,as.character(statLabels(pVal())) )
+  })
+  
+  ####################################################   Correlation Statistics
+  observe({
+    updateSelectInput(session,"corVarSelectX",choices=varList())
+    updateSelectInput(session,"corVarSelectY",choices=varList())
+    updateRadioButtons(session,"corTestRadio",choices=c("Pearson's r"="pearson"))
+  })
+
+  ####################################################   Correlation plots
+  observe({
+    updateTextInput(session,"corPlotXMin",value=min(corXPlotMin()))
+    updateTextInput(session,"corPlotXMax",value=min(corXPlotMax()))
+    updateTextInput(session,"corPlotYMin",value=min(corYPlotMin()))
+    updateTextInput(session,"corPlotYMax",value=min(corYPlotMax()))
+  })
+  
+  output$corStatSummary<-renderPrint({
+    selectedY<-input$corVarSelectY
+    selectedX<-input$corVarSelectX
+    if(selectedY==""||selectedX=="") {return(NULL)}
+    print(cor(dataInput()[,input$corVarSelectX],dataInput()[,input$corVarSelectY]))
+  })
+  
+  corXPlotMin<-reactive({
+    selected<-input$corVarSelectX
+    if(selected=="") {return(0)}
+    return(min(isolate({dataInput()[,selected]})))
+  })
+  corXPlotMax<-reactive({
+    selected<-input$corVarSelectX
+    if(selected=="") {return(0)}
+    return(max(isolate({dataInput()[,selected]})))
+  })
+  corYPlotMin<-reactive({
+    selected<-input$corVarSelectY
+    if(selected=="") {return(0)}
+    return(min(isolate({dataInput()[,selected]})))
+  })
+  corYPlotMax<-reactive({
+    selected<-input$corVarSelectY
+    if(selected=="") {return(0)}
+    return(max(isolate({dataInput()[,selected]})))
+  })
+  
+  output$corVarPlot<-renderPlot({
+    selectedY<-input$corVarSelectY
+    selectedX<-input$corVarSelectX
+    if(selectedY==""||selectedX=="") {return(NULL)}
+    plot(dataInput()[,selectedX],dataInput()[,selectedY],ylim=c(as.numeric(input$corPlotYMin),as.numeric(input$corPlotYMax)),xlim=c(as.numeric(input$corPlotXMin),as.numeric(input$corPlotXMax)))
+  })
 }
 
+
+
+
+
 shinyApp(ui=ui,server=server)
+
+
+
+
+
 
 
 statLabels<-function(pVal) {
@@ -209,6 +295,11 @@ statLabels<-function(pVal) {
   return(labels)
 }
 
+runANOVA<-function(data,group) {
+  model=lm(data~group)
+  ANOVA=aov(model)
+  TukeyHSD(x=ANOVA, conf.level=0.95)[[1]][,4]
+}
 tTestStats<-function(X,Y) {
   nGroups<-nlevels(Y)
   nComps<-nGroups*(nGroups+1)/2-nGroups
@@ -252,4 +343,3 @@ mwuStats<-function(X,Y) {
   }
   return(pVal)
 }
-
