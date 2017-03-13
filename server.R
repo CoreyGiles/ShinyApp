@@ -2,6 +2,7 @@ library(shiny)
 library(shinyjs)
 library(multcompView)
 library(mixOmics)
+library(corrplot)
 
 statLabels<-function(pVal) {
   labels<-data.frame(multcompLetters(pVal)['Letters'])
@@ -164,9 +165,23 @@ function(input,output,session) {
   
   output$summaryTable<-renderPrint(summary(dataOut()))
   
+  corPlot<-reactive({
+    if(input$exploreCORview=="var")
+      cor(dataInput()[,varList()])
+    else
+      cor(t(dataInput()[,varList()]))
+  })
+  
+  output$exploreCOR<-renderPlot({
+    validate(
+      need(dataInput(),"Upload data in the 'Data Import' tab.")
+    )
+    col<-colorRampPalette(c(input$exploreCORcolour1,input$exploreCORcolour2,input$exploreCORcolour3))
+    corrplot(corPlot(),method = "color",col=col(50),outline=TRUE)
+  })
+  
   pcaPlot<-reactive({
     pca(dataInput()[,varList()],ncomp=input$explorePCAcomp,center=input$explorePCAcentre,scale=input$explorePCAscale)
-    #pca(dataInput()[,varList()])
   })
   
   output$explorePCA<-renderPlot({
@@ -339,8 +354,8 @@ function(input,output,session) {
   
   observeEvent(varList(),{
     if(!is.null(varList()) && length(varList())>0) {
-      updateSelectInput(session,"regressionResponseVar",choices=varList())
-      updateSelectInput(session,"regressionIndep1",choices=varList())
+      updateSelectInput(session,"regressionResponseVar",choices=colnames(dataInput()))
+      updateSelectInput(session,"regressionIndep1",choices=colnames(dataInput()))
     }
   })
 }

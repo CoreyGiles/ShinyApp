@@ -40,6 +40,23 @@ fluidPage(
              tabPanel("Exploration",mainPanel(
                verbatimTextOutput(outputId = "summaryTable"),
                hr(),
+               h3("Correlation Analysis"),
+               sidebarLayout(
+                 sidebarPanel(
+                   selectInput("exploreCORview",label="View:",choices = c("Variables"="var","Samples"="samples")),
+                   hr(),
+                   selectInput("exploreCORcolour3",label="High Colour:",choices=c("Red"="#FF0000","Blue"="#0000FF","Green"="#00FF00","White"="#FFFFFF","Black"="#000000"),selected = "#FF0000"),
+                   selectInput("exploreCORcolour2",label="Mid Colour:",choices=c("Red"="#FF0000","Blue"="#0000FF","Green"="#00FF00","White"="#FFFFFF","Black"="#000000"),selected = "#FFFFFF"),
+                   selectInput("exploreCORcolour1",label="Low Colour:",choices=c("Red"="#FF0000","Blue"="#0000FF","Green"="#00FF00","White"="#FFFFFF","Black"="#000000"),selected = "#0000FF")
+                   
+                   
+                   
+                 ),
+                   mainPanel(
+                   plotOutput("exploreCOR"))
+               ),
+               hr(),
+               h3("Principle Component Analysis"),
                sidebarLayout(
                  sidebarPanel(
                    selectInput("explorePCAview",label="View:",choices = c("Variables"="var","Samples"="samples")),
