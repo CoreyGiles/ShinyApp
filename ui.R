@@ -2,11 +2,29 @@ library(shiny)
 library(shinyjs)
 library(multcompView)
 library(mixOmics)
+library(corrplot)
+library(BH)
+library(NMF)
+library(doParallel)
+library(gridBase)
+library(irlba)
+library(pkgmaker)
+library(registry)
+library(rngtools)
 
 fluidPage(
   useShinyjs(),
   navbarPage("Statistics",id="stats",
-             tabPanel("Welcome",sidebarLayout(
+             tabPanel("Welcome",
+              mainPanel(
+                p("This is a work in progress. There are currently many bugs..."),
+                p("Statistical test outputs are currently unformatted and not likely usable just yet."),
+                p("Feel free to use the example dataset below to explore the currently implemented features."),
+                p("NOTE: Be sure to only select a column with defined 'groups' in the 'Data Import' tab."),
+                p("Download example data: https://raw.githubusercontent.com/CoreyGiles/ShinyApp/master/tempCSV.csv"),
+                hr()
+              ),
+              sidebarLayout(
                sidebarPanel(
                  p(strong("Choose the type of statistics you'd like to perform:")),
                  radioButtons(inputId="simpleStats",label="",choices=c("Simple Statistics"="simple","'Omics Statistics"="omics"),selected = "simple")
@@ -16,6 +34,7 @@ fluidPage(
                  p("It is the best option for univariate statistics (ANOVA, t-test, mann-whitney U) with defined groups (Treatment vs control)."),
                  br(),
                  p(strong("'Omics statistics provides advanced statistical procedures for analysis of 'omics datasets")),
+                 p("This will allow PCA and regression analysis. More will come!"),
                  p("This is better for multivariate statistics with defined groups"),
                  br(),
                  br(),
@@ -113,7 +132,8 @@ fluidPage(
                    ))
                )
              )),
-             tabPanel("Regression",mainPanel(
+             tabPanel("Regression",sidebarLayout(
+              sidebarPanel(
                selectInput("regressionResponseVar","Response variable",choices="none"),
                tags$div(id = 'placeholder', tags$div(tagList(
                  selectInput("regressionIndep1",label = "Independent Variable 1",choices="none")),
@@ -122,6 +142,10 @@ fluidPage(
                actionButton('insertBtn', 'Insert'), 
                actionButton('removeBtn', 'Remove'),
                textOutput("formula")
+              ),
+              mainPanel(
+                
+              )
              )),
              tabPanel("Multivariate",mainPanel(
                p(code("Work In Progress"))

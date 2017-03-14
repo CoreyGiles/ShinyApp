@@ -3,6 +3,14 @@ library(shinyjs)
 library(multcompView)
 library(mixOmics)
 library(corrplot)
+library(BH)
+library(NMF)
+library(doParallel)
+library(gridBase)
+library(irlba)
+library(pkgmaker)
+library(registry)
+library(rngtools)
 
 statLabels<-function(pVal) {
   labels<-data.frame(multcompLetters(pVal)['Letters'])
@@ -64,9 +72,26 @@ function(input,output,session) {
   #############################################  Welcome Page  ###########
 
   observe({
-    value<-input$simpleStats=="omics"
-    toggle(condition = value, selector = "#stats li a[data-value=Multivariate]")
-    toggle(condition = value, selector = "#stats li a[data-value=Predictive]")
+    if(is.null(dataInput())) {
+      shinyjs::hide(selector = "#stats li a[data-value=Preprocessing]")
+      shinyjs::hide(selector = "#stats li a[data-value=Exploration]")
+      shinyjs::hide(selector = "#stats li a[data-value=Univariate]")
+      shinyjs::hide(selector = "#stats li a[data-value=Regression]")
+      shinyjs::hide(selector = "#stats li a[data-value=Multivariate]")
+      shinyjs::hide(selector = "#stats li a[data-value=Predictive]")
+    } else {
+      shinyjs::show(selector = "#stats li a[data-value=Preprocessing]")
+      shinyjs::show(selector = "#stats li a[data-value=Exploration]")
+      shinyjs::show(selector = "#stats li a[data-value=Univariate]")
+      shinyjs::show(selector = "#stats li a[data-value=Regression]")
+      if(input$simpleStats=="omics") {
+        shinyjs::show(selector = "#stats li a[data-value=Multivariate]")
+        shinyjs::show(selector = "#stats li a[data-value=Predictive]")
+      } else {
+        shinyjs::hide(selector = "#stats li a[data-value=Multivariate]")
+        shinyjs::hide(selector = "#stats li a[data-value=Predictive]")
+      }
+    }
   })
   
   #############################################  Data Import   ###########
@@ -209,7 +234,11 @@ function(input,output,session) {
   
   ####################################################   Univariate Statistics
   observe({
-    updateSelectInput(session,"uniVarSelect",choices=varList())
+    for(i in 1:length(varList())) {
+      if(!is.factor(varList()))
+        selected<-varList()[i]
+    }
+    updateSelectInput(session,"uniVarSelect",choices=varList(),selected = selected)
   })
   
   observe({
@@ -265,8 +294,12 @@ function(input,output,session) {
   
   ####################################################   Correlation Statistics
   observe({
-    updateSelectInput(session,"corVarSelectX",choices=varList())
-    updateSelectInput(session,"corVarSelectY",choices=varList())
+    for(i in 1:length(varList())) {
+      if(!is.factor(varList()))
+        selected<-varList()[i]
+    }
+    updateSelectInput(session,"corVarSelectX",choices=varList(),selected = selected)
+    updateSelectInput(session,"corVarSelectY",choices=varList(),selected = selected)
     updateRadioButtons(session,"corTestRadio",choices=c("Pearson's r"="pearson"))
   })
   
