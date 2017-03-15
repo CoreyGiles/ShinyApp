@@ -139,12 +139,22 @@ fluidPage(
                  selectInput("regressionIndep1",label = "Independent Variable 1",choices="none")),
                  id = 'regressionInput1'
                )),
+               br(),
                actionButton('insertBtn', 'Insert'), 
                actionButton('removeBtn', 'Remove'),
-               textOutput("formula")
+               textOutput("formula"),
+               hr(),
+               selectInput("regressionType",label="Regression type:",choices=c("Linear Regression"="linear","Logistic Regression"="logistic"))
               ),
               mainPanel(
-                
+                splitLayout(
+                  tagList(
+                    verbatimTextOutput("regStatSummary")
+                  ),
+                  tagList(
+                    plotOutput(outputId = "regPlot")
+                  )
+                )
               )
              )),
              tabPanel("Multivariate",mainPanel(

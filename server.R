@@ -391,4 +391,52 @@ function(input,output,session) {
       updateSelectInput(session,"regressionIndep1",choices=colnames(dataInput()))
     }
   })
+  
+  regression<-reactive({
+    if(!is.null(varList()) && length(varList())>0) {
+      if(is.factor(dataInput()[,input$regressionResponseVar]) && input$regressionType=="linear") {
+        alert("Response variable must be continuous for linear regression")
+        return(NULL)
+      }
+      if(!is.factor(dataInput()[,input$regressionResponseVar]) && input$regressionType=="logistic") {
+        alert("Response variable must be a factor for logistic regression")
+        return(NULL)
+      }
+      if(input$regressionType=="logistic" && nlevels(dataInput()[,input$regressionResponseVar])!=2) {
+        alert("Response variable must only have two levels. Please remove groups on the 'Preprocessing' tab.")
+      }
+      len<-length(inserted$reg)
+      vars<-c()
+      for(i in 1:len) {
+        vars<-c(vars,input[[paste0("regressionIndep",i)]])
+      }
+      print("here")
+      regressionFormula<-as.formula(paste0(input$regressionResponseVar,"~",paste(vars,sep="",collapse="+"),collapse=""))
+      if(input$regressionType=="linear") {
+        return(lm(regressionFormula,data=dataInput()))
+      }
+      if(input$regressionType=="logistic") {
+        return(glm(regressionFormula,family=binomial(link='logit'),data=dataInput()))
+      }
+    }
+  })
+  
+  output$regStatSummary<-renderPrint({
+    validate(
+      need(regression(), "")
+    )
+    print(summary(regression()))
+  })
+  
+  output$regPlot<-renderPlot({
+    validate(
+      need(regression(), "Ensure the appropriate regression type and response variable is selected")
+    )
+    X<-predict(regression())
+    Y<-dataInput()[,input$regressionResponseVar]
+    plot(X,Y)
+    #if(input$regressionType=="logistic") {
+    #  curve(predict(regression(),data.frame(   =x),type="resp),add=TRUE)
+    #}
+  })
 }
