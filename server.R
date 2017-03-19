@@ -87,9 +87,16 @@ function(input,output,session) {
       if(input$simpleStats=="omics") {
         shinyjs::show(selector = "#stats li a[data-value=Multivariate]")
         shinyjs::show(selector = "#stats li a[data-value=Predictive]")
+        shinyjs::hide(selector = "#stats li a[data-value=Regression]")
+      } else if(input$simpleStats=="regression"){
+        shinyjs::hide(selector = "#stats li a[data-value=Multivariate]")
+        shinyjs::hide(selector = "#stats li a[data-value=Predictive]")
+        shinyjs::show(selector = "#stats li a[data-value=Regression]")
       } else {
         shinyjs::hide(selector = "#stats li a[data-value=Multivariate]")
         shinyjs::hide(selector = "#stats li a[data-value=Predictive]")
+        shinyjs::hide(selector = "#stats li a[data-value=Regression]")
+        
       }
     }
   })
@@ -143,7 +150,20 @@ function(input,output,session) {
     }
     length(varList())
   })
-
+  factorList<-reactive({
+    if(is.null(dataInput())) {
+      return(NULL)
+    }
+    names(Filter(is.factor,dataInput()))
+  })
+  contList<-reactive({
+    if(is.null(dataInput())) {
+      return(NULL)
+    }
+    colnames(dataInput())[-which(colnames(dataInput())==factorList())]
+  })
+  
+  
   
   output$dataTable<-renderDataTable(dataInput(),options=list(pageLength=10))
   
@@ -151,10 +171,10 @@ function(input,output,session) {
   #############################################  Preprocess  ###########
   output$preProcess<-renderUI({
     if(!is.null(varLength())) {
-      lapply(1:varLength(),function(i) {
+      lapply(1:length(colnames(dataInput())),function(i) {
         fluidRow(
           column(width=4,tagList(
-            h1(varList()[i])
+            h3(colnames(dataInput())[i])
           )),
           column(width=4,tagList(
             checkboxInput(paste0("ignore",i),label="Ignore")
@@ -166,13 +186,13 @@ function(input,output,session) {
     }
   })
   
-  temp2<-reactive({
+  variableIgnore<-reactive({
     ae<<-c()
-    if(!is.null(varLength()) && varLength()!=0) {
-      lapply(1:varLength(),function(i) {
+    if(!is.null(dataInput()) && varLength()!=0) {
+      lapply(1:length(colnames(dataInput())),function(i) {
         eval(parse(text=paste0("temp<-input$ignore",i)))
         if(!is.null(temp) && temp) {
-          ae<<-append(ae,which(colnames(dataInput())==varList()[i]))
+          ae<<-append(ae,which(colnames(dataInput())==colnames(dataInput())[i]))
         }
       })
     }
@@ -180,11 +200,18 @@ function(input,output,session) {
   })
   
   dataOut<-reactive({
-    if(!is.null(temp2())) {
-      return(dataInput()[,-temp2()])
+    if(!is.null(variableIgnore())) {
+      return(dataInput()[,-variableIgnore()])
     } else {
       return(dataInput())
     }
+  })
+  
+  dataDetails<-reactiveValues()
+
+  dataDetails$contList<-reactive({
+    if(!is.null(dataOut()))
+      colnames(dataOut())[which(colnames(dataOut())%in%contList())]
   })
   #############################################  Exploration  ###########
   
@@ -192,9 +219,9 @@ function(input,output,session) {
   
   corPlot<-reactive({
     if(input$exploreCORview=="var")
-      cor(dataInput()[,varList()])
+      cor(dataInput()[,dataDetails$contList()])
     else
-      cor(t(dataInput()[,varList()]))
+      cor(t(dataInput()[,dataDetails$contList()]))
   })
   
   output$exploreCOR<-renderPlot({

@@ -27,15 +27,22 @@ fluidPage(
               sidebarLayout(
                sidebarPanel(
                  p(strong("Choose the type of statistics you'd like to perform:")),
-                 radioButtons(inputId="simpleStats",label="",choices=c("Simple Statistics"="simple","'Omics Statistics"="omics"),selected = "simple")
+                 radioButtons(inputId="simpleStats",label="",choices=c("Simple Statistics"="simple","Regression Models
+                                                                       "="regression","'Omics Statistics"="omics"),selected = "simple")
                ),
                mainPanel(
                  p(strong("Simple statistics offer commonly used statistics for simple experimental designs")),
-                 p("It is the best option for univariate statistics (ANOVA, t-test, mann-whitney U) with defined groups (Treatment vs control)."),
+                 p("Simple statistics is the best option for univariate statistics with defined groups (Treatment vs controls)."),
+                 p("Exploration: Whole dataset summary statistics and correlations"),
+                 p("Univariate: Perform ANOVA, t-test and mann-whitney U for comparing group means. Pearson's correlation"),
+                 br(),
+                 p(strong("Regression models allows the construction of linear and logistic regression models.")),
+                 p("Future improvements will include LASSO and Ridge regularization, filter/wrapper variable selection and cross validation."),
                  br(),
                  p(strong("'Omics statistics provides advanced statistical procedures for analysis of 'omics datasets")),
-                 p("This will allow PCA and regression analysis. More will come!"),
-                 p("This is better for multivariate statistics with defined groups"),
+                 p("Exploration: Correlation analysis and Principle Component Analysis. More will come! (unsupervised clustering)"),
+                 p("Univariate: Compare a large number of variables between two groups (t-test and false discovery rate)."),
+                 p("Multivariate: Common multivariate models (to be implemented)"),
                  br(),
                  br(),
                  p("Once you have selected the type of statistics, continue onto the 'Data Import' tab to upload your data.")
